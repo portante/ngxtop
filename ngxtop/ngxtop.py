@@ -53,7 +53,7 @@ Examples:
     $ ngxtop avg bytes_sent --filter 'status == 200 and request_path.startswith("foo")'
 
     Analyze apache access log from remote machine using 'common' log format
-    $ ssh remote tail -f /var/log/apache2/access.log | ngxtop -f common
+    $ ssh remote tail -F /var/log/apache2/access.log | ngxtop -f common
 """
 from __future__ import print_function
 import atexit
@@ -65,6 +65,7 @@ import sqlite3
 import time
 import sys
 import signal
+from pygtail import Pygtail
 
 try:
     import urlparse
@@ -115,16 +116,10 @@ DEFAULT_FIELDS = set(['status_type', 'bytes_sent'])
 # ======================
 def follow(the_file):
     """
-    Follow a given file and yield new lines when they are available, like `tail -f`.
+    Follow a given file and yield new lines when they are available, like `tail -F`.
     """
-    with open(the_file) as f:
-        f.seek(0, 2)  # seek to eof
-        while True:
-            line = f.readline()
-            if not line:
-                time.sleep(0.1)  # sleep briefly before trying again
-                continue
-            yield line
+    for line in Pygtail(the_file, read_from_end=True):
+        yield line
 
 
 def map_field(field, func, dict_sequence):
